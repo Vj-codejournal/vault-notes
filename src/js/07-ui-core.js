@@ -3,7 +3,7 @@ const UI = {
   tab: 'notes', screens: [], views: {}, stale: new Set(),
   init() {
     const app = $('#app');
-    const tabs = [['notes', 'notes', 'Notes'], ['search', 'search', 'Search'], ['calendar', 'cal', 'Calendar'], ['habits', 'habit', 'Habits']];
+    const tabs = [['notes', 'notes', 'Notes'], ['search', 'search', 'Search'], ['calendar', 'cal', 'Calendar'], ['habits', 'habit', 'Habits'], ['water', 'drop', 'Water']];
     for (const [id] of tabs) app.append(this.views[id] = h('section', { class: 'screen main hidden', id: 'v-' + id }));
     const nav = h('nav', { id: 'nav' });
     for (const [id, ic, label] of tabs) nav.append(h('button', { 'data-tab': id, onclick: () => this.show(id) }, iconEl(ic), label));
@@ -12,7 +12,7 @@ const UI = {
     document.addEventListener('focusout', () => setTimeout(() => { if (this.stale.size) this.scheduleRefresh(); }, 50));
     let initial = 'notes';
     try { initial = localStorage.getItem('tab') || 'notes'; } catch { }
-    if (location.hash && ['notes', 'search', 'calendar', 'habits'].includes(location.hash.slice(1))) initial = location.hash.slice(1);
+    if (location.hash && ['notes', 'search', 'calendar', 'habits', 'water'].includes(location.hash.slice(1))) initial = location.hash.slice(1);
     this.show(initial);
   },
   show(id) {
@@ -24,7 +24,7 @@ const UI = {
     this.render(id);
     if (id === 'search') setTimeout(() => $('#q')?.focus(), 50);
   },
-  render(id) { ({ notes: renderNotes, search: renderSearch, calendar: renderCalendar, habits: renderHabits })[id](this.views[id]); this.stale.delete(id); },
+  render(id) { ({ notes: renderNotes, search: renderSearch, calendar: renderCalendar, habits: renderHabits, water: renderWater })[id](this.views[id]); this.stale.delete(id); },
   scheduleRefresh: debounce(function () {
     const id = UI.tab, v = UI.views[id];
     const ae = document.activeElement;

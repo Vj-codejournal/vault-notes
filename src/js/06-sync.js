@@ -152,15 +152,19 @@ function dataUrlToBytes(url) {
 }
 const blobToDataUrl = b => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); });
 
-async function exportVault() {
-  const enc = new TextEncoder(), entries = [];
+/** The whole vault (incl. .app/ data) as an Obsidian-compatible zip Blob; shared by Export and Google Drive backup. */
+async function buildVaultZip() {
+  const enc = new TextEncoder(), entries = [], files = Vault.files({ hidden: true });
   const folders = new Set([...Vault.all()].filter(r => r.kind === 'folder').map(r => r.path));
-  for (const r of Vault.files({ hidden: true })) {
+  for (const r of files) {
     const isText = r.kind === 'md' || r.kind === 'txt' || !r.content.startsWith('data:');
     entries.push({ name: r.path, data: isText ? enc.encode(r.content) : dataUrlToBytes(r.content), compress: isText });
   }
-  for (const f of folders) if (!Vault.files({ hidden: true }).some(r => r.path.startsWith(f + '/'))) entries.push({ name: f + '/', data: new Uint8Array(0) });
-  const blob = await Zip.write(entries);
+  for (const f of folders) if (!files.some(r => r.path.startsWith(f + '/'))) entries.push({ name: f + '/', data: new Uint8Array(0) });
+  return Zip.write(entries);
+}
+async function exportVault() {
+  const blob = await buildVaultZip();
   const name = `vault-${todayStr()}.zip`;
   if (Cloud.downloads) {
     try { await Cloud.downloads.save({ filename: name, data: blob }); toast('Backup saved'); await IDB.kvSet('lastExport', Date.now()); return; }

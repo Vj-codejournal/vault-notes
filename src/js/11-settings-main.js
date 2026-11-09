@@ -3,8 +3,8 @@ function openSettings() {
   const el = h('section', { id: 'settings', class: 'settings' });
   const body = h('div', { class: 'scroll' });
   const close = UI.pushScreen(el, { refresh: () => draw() });
-  const onCloud = () => draw(); Cloud.listeners.add(onCloud);
-  const prevClose = UI.screens[UI.screens.length - 1]; prevClose.onClose = () => Cloud.listeners.delete(onCloud);
+  const onCloud = () => draw(); Cloud.listeners.add(onCloud); Drive.listeners.add(onCloud);
+  const prevClose = UI.screens[UI.screens.length - 1]; prevClose.onClose = () => { Cloud.listeners.delete(onCloud); Drive.listeners.delete(onCloud); };
   el.append(topbar(iconBtn('back', () => close(), 'Back'), 'Settings', h('div', { style: { width: '42px' } })), body);
   async function draw() {
     const s = Settings.get(), files = Vault.files(), notes = files.filter(f => f.kind === 'md'), imgs = files.filter(f => f.kind === 'img');
@@ -20,6 +20,8 @@ function openSettings() {
         window.claude ? h('div', { class: 'item' }, h('div', { class: 'txt' }, h('span', null, h('span', { class: 'sync-dot ' + dotCls }), 'Cloud backup'), h('small', null, Cloud.msg || 'Off'))) : null,
         item('Export vault (.zip)', last ? 'Last backup ' + relTime(last) : 'Obsidian-compatible: folders, .md files, images', () => exportVault().catch(e => toast('Export failed: ' + e.message)), iconEl('download')),
         item('Import .zip', 'Bring in an Obsidian vault or a backup', () => importFlow(), iconEl('upload'))),
+      h('div', { class: 'pad' }, h('div', { class: 'section-h' }, 'Google Drive backup')),
+      h('div', { class: 'card', style: { margin: '0 12px' } }, driveSettingsRows(item)),
       h('div', { class: 'pad' }, h('div', { class: 'section-h' }, 'Notes')),
       h('div', { class: 'card', style: { margin: '0 12px' } },
         item('Daily notes folder', s.dailyFolder, async () => { const v = await promptText('Daily notes folder', { value: s.dailyFolder }); if (v && !badName(v.replace(/\//g, ''))) await Settings.set({ dailyFolder: P.clean(v) }); }),
@@ -82,7 +84,7 @@ async function seedVault() {
 }
 
 function registerSW() {
-  if (window.claude || inFrame() || !('serviceWorker' in navigator) || (location.protocol !== 'https:' && location.hostname !== 'localhost')) return;
+  if (IS_NATIVE || window.claude || inFrame() || !('serviceWorker' in navigator) || (location.protocol !== 'https:' && location.hostname !== 'localhost')) return;
   navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
 }
 
@@ -93,7 +95,9 @@ async function main() {
   if (!seeded && !Vault.map.size) { await seedVault(); }
   await IDB.kvSet('seeded', 1);
   UI.init();
+  Water.start();
   Cloud.init();
+  Drive.init().catch(e => console.warn('drive', e));
   registerSW();
   (window.requestIdleCallback || setTimeout)(() => Search.build());
   // re-render when the day changes (app left open overnight)

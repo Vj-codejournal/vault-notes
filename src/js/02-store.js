@@ -154,7 +154,7 @@ const Vault = {
 
 /* ---------- settings (stored in the vault so they sync + export) ---------- */
 const SETTINGS_PATH = '.app/settings.json';
-const DEFAULT_SETTINGS = { dailyFolder: 'Daily Notes', attachFolder: 'attachments', weekStart: 1, sort: 'name', readDefault: true, imgMax: 1600 };
+const DEFAULT_SETTINGS = { dailyFolder: 'Daily Notes', attachFolder: 'attachments', weekStart: 1, sort: 'name', readDefault: true, imgMax: 1600, waterHabitId: 'h-water', tapMl: 100 };
 const Settings = {
   get() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(Vault.read(SETTINGS_PATH) || '{}') }; } catch { return { ...DEFAULT_SETTINGS }; } },
   async set(patch) { await Vault.write(SETTINGS_PATH, JSON.stringify({ ...this.get(), ...patch }, null, 2)); },

@@ -1,3 +1,9 @@
 dist/
 node_modules/
 .DS_Store
+# Android (Capacitor) build outputs; android/.gitignore covers the rest
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/.idea/

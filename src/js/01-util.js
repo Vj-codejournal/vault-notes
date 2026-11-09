@@ -116,15 +116,23 @@ const IC = {
   archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   today: '<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="12" cy="15" r="2" fill="currentColor"/>',
+  drop: '<path d="M12 21.5a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 10.6 5 12.5 5 14.5a7 7 0 0 0 7 7z"/>',
+  nfc: '<path d="M6 8.3a7.4 7.4 0 0 1 0 7.4M9.5 6.2a11.8 11.8 0 0 1 0 11.6M12.9 4.1a15.9 15.9 0 0 1 0 15.8M16.4 2a20.2 20.2 0 0 1 0 20"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
 };
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24">${IC[n] || ''}</svg>`;
 const iconEl = (n, cls) => { const t = document.createElement('template'); t.innerHTML = icon(n, cls); return t.content.firstChild; };
 
 /* ---------- toast / sheets / dialogs (alert/confirm/prompt are blocked in the sandbox) ---------- */
 let toastT;
-function toast(msg, ms = 2200) {
-  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms);
+/** action (optional): { label, onClick } shows a button in the toast, e.g. Undo */
+function toast(msg, ms = 2200, action) {
+  const t = $('#toast'), hide = () => t.classList.remove('show', 'act');
+  t.replaceChildren(String(msg));
+  if (action) t.append(h('button', { onclick: () => { clearTimeout(toastT); hide(); action.onClick(); } }, action.label));
+  t.classList.toggle('act', !!action); t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(hide, ms);
 }
 const overlayStack = [];
 function openOverlay(el, onClose) {

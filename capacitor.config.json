@@ -1,0 +1,8 @@
+{
+  "appId": "com.vjcodejournal.vault",
+  "appName": "Vault",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#000000"
+  }
+}

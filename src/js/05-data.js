@@ -178,5 +178,11 @@ function mergeAppJson(path, a, b) {
     for (const [d, e] of Object.entries(B)) { out[d] ||= {}; for (const [id, v] of Object.entries(e)) if (!out[d][id] || v[1] > out[d][id][1]) out[d][id] = v; }
     return JSON.stringify(out);
   }
+  if (/^\.app\/water-log\/\d{4}\.json$/.test(path)) {
+    // union of entries per day; a tombstone (index 3 = delTs) beats a live copy, the later delTs beats an earlier one
+    const out = structuredClone(A);
+    for (const [d, e] of Object.entries(B)) { out[d] ||= {}; for (const [id, v] of Object.entries(e || {})) { const o = out[d][id]; if (!Array.isArray(o) || (Array.isArray(v) && (v[3] || 0) > (o[3] || 0))) out[d][id] = v; } }
+    return Water.ser(out);
+  }
   return null;
 }

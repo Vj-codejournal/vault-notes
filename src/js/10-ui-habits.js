@@ -1,6 +1,15 @@
 /* ---------- Habits tab ---------- */
 const HabState = { view: 'today', date: todayStr(), weekOf: todayStr() };
 const fmtNum = n => (Math.round(n * 100) / 100).toString();
+/* the habit linked to WaterTap (Water.linked) is driven by water entries: + adds one, − removes the newest, setting a value adds an adjustment */
+async function habStep(hb, d, dir) {
+  if (!Water.linked(hb)) return Habits.step(hb, d, dir);
+  if (dir > 0) return Water.add(d, Water.stepMl(), 'manual');
+  const e = await Water.removeLast(d);
+  if (e) toast(`Removed ${fmtMl(e.ml)}`, 4000, { label: 'Undo', onClick: () => Water.restore(d, e.id) });
+}
+const habSet = (hb, d, v) => Water.linked(hb) ? Water.setTotal(d, v * 1000) : Habits.setValue(hb.id, d, v);
+const habToggle = (hb, d) => Water.linked(hb) ? Water.setTotal(d, Habits.done(hb, d) ? 0 : Water.goalMl()) : Habits.toggle(hb, d);
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
 
 function renderHabits(v) {
@@ -32,7 +41,7 @@ function habitsToday(sc, list) {
     h('div', { class: 'hab-meta' }, h('span', null, h('span', { class: 'n' }, done), ` of ${sched.length} completed${S.date !== t ? ' · ' + prettyDate(S.date, { noRel: true }) : ''}`),
       iconBtn('more', () => actionSheet('Habits', [
         { label: 'New habit', icon: 'plus', onClick: () => editHabit() },
-        { label: 'Mark all done for this day', icon: 'check', onClick: async () => { for (const hb of sched) if (!Habits.done(hb, S.date)) await Habits.setValue(hb.id, S.date, Habits.goal(hb)); } },
+        { label: 'Mark all done for this day', icon: 'check', onClick: async () => { for (const hb of sched) if (!Habits.done(hb, S.date)) await habSet(hb, S.date, Habits.goal(hb)); } },
         { label: 'Archived habits', icon: 'archive', onClick: showArchived },
       ]), 'More')));
   const cards = h('div', { class: 'hcards' });
@@ -49,11 +58,11 @@ function habitCard(hb, date, off) {
   if (st.current > 1) card.append(h('span', { class: 'streak', html: `${icon('flame')}`.replace('class="i ', 'style="width:14px;height:14px;vertical-align:-2px" class="i ') + st.current }));
   if (isT) {
     card.append(h('div', { class: 'tgt' },
-      h('button', { onclick: e => { e.stopPropagation(); Habits.step(hb, date, -1); } }, '−'),
+      h('button', { onclick: e => { e.stopPropagation(); habStep(hb, date, -1); } }, '−'),
       h('span', null, `${fmtNum(val)}/${fmtNum(hb.target)}${hb.unit ? ' ' + hb.unit : ''}`),
-      h('button', { onclick: e => { e.stopPropagation(); Habits.step(hb, date, 1); } }, '+')));
+      h('button', { onclick: e => { e.stopPropagation(); habStep(hb, date, 1); } }, '+')));
   } else card.append(h('div', { class: 'tick' }));
-  card.addEventListener('click', () => { navigator.vibrate?.(8); isT ? Habits.step(hb, date, 1) : Habits.toggle(hb, date); });
+  card.addEventListener('click', () => { navigator.vibrate?.(8); isT ? habStep(hb, date, 1) : habToggle(hb, date); });
   onLongPress(card, () => habitMenu(hb));
   return card;
 }
@@ -62,8 +71,8 @@ function habitRow(hb, date) {
   const row = h('div', { class: 'item' + (done ? '' : '') },
     h('span', { style: { width: '12px', height: '12px', borderRadius: '4px', background: hb.color, flex: 'none' } }),
     h('div', { class: 'txt', onclick: () => openHabit(hb.id) }, hb.name, isT ? h('small', null, `${fmtNum(Habits.value(hb.id, date))} / ${fmtNum(hb.target)} ${hb.unit || ''}`) : null));
-  if (isT) row.append(h('button', { class: 'btn sm', onclick: () => Habits.step(hb, date, -1) }, '−'), h('button', { class: 'btn sm', onclick: () => Habits.step(hb, date, 1) }, '+'));
-  row.append(h('button', { class: 'check' + (done ? ' on' : ''), onclick: () => Habits.toggle(hb, date) }));
+  if (isT) row.append(h('button', { class: 'btn sm', onclick: () => habStep(hb, date, -1) }, '−'), h('button', { class: 'btn sm', onclick: () => habStep(hb, date, 1) }, '+'));
+  row.append(h('button', { class: 'check' + (done ? ' on' : ''), onclick: () => habToggle(hb, date) }));
   return row;
 }
 function habitMenu(hb) {
@@ -97,7 +106,7 @@ function habitsWeekly(sc, list) {
     for (const d of days) {
       const s = Habits.scheduled(hb, d); if (s && d <= t) sch++;
       const p = Habits.progress(hb, d), dn = Habits.done(hb, d); if (dn) cnt++;
-      const c = h('button', { class: 'c' + (s ? '' : ' off'), style: { background: dn ? hb.color : p > 0 ? hexA(hb.color, .25 + p * .5) : '' }, disabled: d > t, onclick: () => Habits.toggle(hb, d) }, dn ? '✓' : p > 0 ? Math.round(p * 100) + '%' : '');
+      const c = h('button', { class: 'c' + (s ? '' : ' off'), style: { background: dn ? hb.color : p > 0 ? hexA(hb.color, .25 + p * .5) : '' }, disabled: d > t, onclick: () => habToggle(hb, d) }, dn ? '✓' : p > 0 ? Math.round(p * 100) + '%' : '');
       tr.append(h('td', null, c));
     }
     tr.append(h('td', { class: 'cnt' }, `${cnt}/${sch || 0}`));
@@ -198,14 +207,14 @@ function openHabit(id) {
   draw();
 }
 async function dayEdit(hb, d) {
-  if (hb.type !== 'target') { await Habits.toggle(hb, d); toast(`${prettyDate(d, { noRel: true })}: ${Habits.done(hb, d) ? 'done ✓' : 'not done'}`); return; }
+  if (hb.type !== 'target') { await habToggle(hb, d); toast(`${prettyDate(d, { noRel: true })}: ${Habits.done(hb, d) ? 'done ✓' : 'not done'}`); return; }
   const r = await formSheet(prettyDate(d, { year: true }), form => {
     const inp = h('input', { type: 'number', step: 'any', min: '0', value: fmtNum(Habits.value(hb.id, d)), inputmode: 'decimal' });
     form.append(h('label', null, `${hb.name} (${hb.unit || 'amount'}) — target ${fmtNum(hb.target)}`), inp);
     setTimeout(() => inp.select(), 80);
     return { value: () => +inp.value || 0, autofocus: false };
   });
-  if (r != null) await Habits.setValue(hb.id, d, r);
+  if (r != null) await habSet(hb, d, r);
 }
 
 async function editHabit(hb) {
